@@ -1,0 +1,387 @@
+#http://colorbrewer2.org/#type=sequential&scheme=BuGn&n=3 = escala de cores
+
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(ggthemes)
+
+url_fake_data <- "https://raw.githubusercontent.com/leobarone/cebrap_lab_programacao_r/master/data/fake_data_2.csv"
+fake <- read_delim(url_fake_data, delim = ";", col_names = T)
+
+#Esse é um banco de dados de intenção de voto:
+
+glimpse(fake)
+
+#Um primeiro exemplo de gráficos com uma variável discreta
+
+ggplot(data = fake) + geom_bar(aes(x = candidato))
+# Como eu não defini o Y, ele se tornou a frequência de um candidato
+
+
+# Gráficos com uma variável contínua - Gráficos de histogramas
+
+ggplot(data = fake) + geom_bar(aes(x = renda))
+#Se tentarmos representar uam vairável contínua com uma geometria feita para uma variável discreta, não iremos conseguir.
+
+ggplot(data = fake) + geom_histogram(aes(x = renda))
+#Note que o tipo de variável que demanda uma(s) geometria(s) específica(s), e não contrário.
+
+##Exercício
+#Use o banco de dados de Fakeland para criar um gráfico que mostra o nível de apoio para cada partido, 
+ggplot(data = fake) + geom_bar(aes(x = partido))
+
+#e um gráfico que mostra a distribuição da idade (trata idade como uma variável contínua).
+ggplot(data = fake) + geom_histogram(aes ( x = renda))
+
+
+## Parâmetros fixos
+
+# Parâmetros que variam dependendo de nossos dados devem ficar dentro de aes(); 
+# Parâmetros fixos que não depende de nossos dados devem ficar fora do aes().
+#representar mais valores do eixo "x" em cada barra do histograma (quanto maior o binwidth, mais grossa a barra)
+ggplot(data = fake) + geom_histogram(aes(x = renda), binwidth = 4000)  
+
+# Cores:
+# aceita tanto cores htlm quanto nomes
+
+ggplot(data = fake) + geom_histogram(aes(x = renda), binwidth = 4000, colour = "black", fill="#542788") 
+
+#Gráficos com uma variável contínua - Gráficos de densidade
+# existem várias geometrias que podem funcionar para qualquer tipo de 
+# dado específico (histogram ou densidade, por exemplo).
+
+#E vamos adicionar uma linha com a média dessa distribuição
+media_renda <- mean(fake$renda)
+
+
+ggplot(fake) + 
+  geom_density(aes(x = renda), colour ="#542788", fill="yellow",alpha=0.2) +
+  geom_vline(aes(xintercept = media_renda))
+
+
+# Para tornar o gráfico mais interessante, vamos alterar a forma e a cor da linha adicionada no gráfico anterior:
+  
+  ggplot(fake) + 
+  geom_density(aes(x = renda), colour="blue", fill="blue",alpha=0.2) +
+  geom_vline(aes(xintercept = media_renda),
+             linetype="dashed",
+             colour="red")
+
+##Exercício
+  # Crie um gráfico de densidade de idade e adicione uma linha vertical que indica as pessoas com mais de 
+  # 21 anos de idade. Ajuste a formatação para usar as mesmas cores do site da USP.  
+
+  #fazendo as escalas de cores de acordo com outra variável candidato
+    
+ggplot(fake) +
+  geom_density(aes( x = idade, colour = candidato, fill = candidato, alpha=0.5)) +
+  geom_vline(aes(xintercept = 21), colour="red", size = 3)
+
+#Gráficos com uma variável contínua e uma variável discreta
+# Vamos dar alguns passos para traz e retornar aos histogramas. E se quisermos comparar as distribuições de renda por 
+# sexo, por exemplo? Precisamos filtrar os dados e fazer um gráfico para cada categoria de sexo?
+# Mas mais interessante é compara as distribuições em um mesmo gráfico. Para fazer isso, 
+# precisamos saber como visualizar duas variáveis do nosso data.frame ao mesmo tempo. 
+# Como estamos separando uma distribuição de uma variável contínua (renda) em duas, a partir de 
+# uma segunda variável discreta (sexo), precisamos adicionar essa nova variável à "aesthetics". Veja como:
+
+ggplot(fake) + 
+geom_histogram(aes(x = renda, fill = sexo), position = "identity")
+
+#"position" é o que determina como as barras ficarão dispotas uma em relação à outra. 
+# Vamos ver outras opções para o mesmo parâmetro (novamente, comum a várias geometrias) para buscar uma opção 
+# mais adequada de visualizar os mesmos dados:
+
+ggplot(fake) + 
+  geom_histogram(aes(x = renda, fill = sexo), binwidth = 4000, position = "dodge")
+
+# Vamos tentar algo semelhante com as curvas de densidade. Em vez de "fill", vamos usar a variável 
+# sexo em "colour" na "aesthetics" e separa as distribuições por cores de borda:
+
+ggplot(fake) + 
+  geom_density(aes(x = renda, colour = sexo))
+
+# Agora sim está melhor. Vamos adicionar o mesmo com "fill":
+  
+  ggplot(fake) + 
+  geom_density(aes(x = renda, fill = sexo, alpha = 0.5))
+
+  # Finalmente, podemos usar "fill" e "colour" juntos na "aesthetics"
+  
+  ggplot(fake) + 
+    geom_density(aes(x = renda, fill = sexo, colour = sexo), alpha = 0.5)  
+
+  #colour se refere a linha. O ideal é que ela siga o fill
+  
+  
+# Exercício
+#  As pessoas mais ricas do Fakeland estão mais propensas a serem membros do partido 
+#  "Conservative Party"? Crie um gráfico claro para mostrar a relação entre essas variáveis.
+  
+  ggplot(fake) + 
+    geom_histogram(aes(x = renda, fill = partido, colour = partido), alpha = 0.5)
+
+  
+# Gráficos com uma variável contínua e uma variável discreta - Gráficos de boxplot
+  
+  
+# Vamos repetir o gráfico acima, mas, em vez de separar as distribuições por sexo, vamos separar por uma 
+# variável com mais categorias: 'educ', que representa nível educacional mais alto obtido pelo indivíduo em Fakeland.
+  
+  ggplot(fake) + 
+    geom_density(aes(x = renda, fill = educ, colour = educ), alpha = 0.5)
+
+# Dá par comparar as distribuições de idade por grupo? Certamente não. 
+  # Podemos ter alguma ideia de que não há muita diferença, mas o gráfico é poluído demais.
+  
+# Uma alternativa mais sintética, ou seja, que contém menos informações, para representar distribuições de
+  # variáveis numéricas é utilizar boxplot. Vamos ver um exemplo que serve de alternativa ao gráfico anterior.
+  # Nota: na nova "aesthetics" temos agora "x" (eixo horizontal) e "y", eixo vertical.
+  
+  ggplot(fake) + 
+    geom_boxplot(aes(x = educ, y = renda, fill = educ), colour = "grey")    
+
+# Gráfico de barras, para variáveis categóricas, e histogramas, curvas de densidade e boxplot são os 
+# melhores gráficos para explorarmos as distribuição de variáveis quando queremos conhecer os dados que recém 
+# coletamos ou obtemos.  
+  
+  ##Gráficos de duas variáveis contínuas 
+
+# Para comparar duas variáveis contínuas, o ideal é o geom_point
+  
+  ggplot(fake) + 
+    geom_point(aes(x = idade, y = renda))
+
+# Note que há uma certa tendência nos dados: quanto mais velha a pessoa, maior sua renda. 
+# Podemos representar essa relação com modelos lineares e não lineares. A geometria geom_smooth cumpre esse papel.  
+# Para utilizá-la, precisamos definir qual é o método (parâmetro "method") de ajuste aos dados. 
+# O mais convencional é representar a relação entre as variáveis como reta. 
+  # Veja o exemplo (ignore o parâmetro "se" por enquanto):
+  
+  ggplot(fake) + 
+    geom_point(aes(x = idade, y = renda)) +
+    geom_smooth(aes(x = idade, y = renda), method = "lm", se = FALSE)
+
+  # Legal, não? Se retirarmos o parâmetro "se", ou voltarmos seu valor para o padrão "TRUE", 
+  # obteremos também o intervalo de confiança da reta que inserimos.
+  
+  ggplot(fake) + 
+    geom_point(aes(x = idade, y = renda)) +
+    geom_smooth(aes(x = idade, y = renda), method = "lm")  
+
+  # mesmo gráfico mais bonito:
+  
+  ggplot(fake) + 
+    geom_point(aes(x = idade, y = renda), colour = "#2166ac" ) +
+    theme(panel.background = element_blank()) +
+    geom_smooth(aes(x = idade, y = renda), method = "lm", colour = "white", fill ="#2166ac", alpha =0.9)  
+
+  # A alternativa não linear para representar a relação ao dados mais 
+  # utilizada com essa geometria é o método "loess". Veja o resultado:
+  
+  ggplot(fake) + 
+    geom_point(aes(x = idade, y = renda)) +
+    geom_smooth(aes(x = idade, y = renda), method = "loess")  
+  
+## Gráficos de três ou mais variáveis
+  
+  # Se, por exemplo, queremos representar uma terceira variável numérica, podemos colocá-la 
+  # como o tamanho dos pontos (raio do círculo). Por exemplo, o número de filhos, variável que 
+  # vai de 1 a 10 nos nossos dados, poderia ser adicionada da seguinte forma:
+    
+    ggplot(fake) + 
+    geom_point(aes(x = idade, y = renda, size = filhos, colour = filhos))
+
+    #no caso eu coloquei colour também pra ficair mais claro ainda
+    
+  # Se, em vez de alterar o tamanho dos pontos por uma variável numérica, quisermos alterar sua cor 
+  # ou forma dos pontos com base em uma variável categória (sexo, por exemplo), fazemos, respectivamente:
+      
+      ggplot(fake) + 
+      geom_point(aes(x = idade, y = renda, colour = sexo))
+ #ou:
+      ggplot(fake) + 
+        geom_point(aes(x = idade, y = renda, shape = sexo, colour = sexo))
+
+      
+# Nota: cada símbolo é representado por um número e você encontra facilmente na 
+      # documentação a tabela de códigos dos diferentes símbolos.      
+      
+# Adicionando uma reta de regressão para cada categoria de sexo:
+        
+        ggplot(fake) + 
+        geom_point(aes(x = idade, y = renda, colour = sexo, shape = sexo)) +
+        geom_smooth(aes(x = idade, y = renda, colour = sexo), method = "lm", se = F)
+
+#Lindo, não?
+# Existe mais um outro jeito de mostrar mais de duas variáveis - podemos criar vários gráficos organizados 
+# em uma grade sem ter que repetir nosso código toda vez. Como fazer isso? Com face_grid ou facet_wrap. 
+          
+          ggplot(fake) + 
+          geom_point(aes(x = idade, y = renda, colour = sexo)) +
+          facet_wrap(~sexo)        
+
+## Exercício
+   # Vamos usar o banco de dados menor de Fakeland para investigar a relação entre renda, poupança e 
+   # número de crianças. Começando com o código debaixo, crie um gráfico de dispersão entre renda (income) 
+   # e poupança (savings), e ajuste o tamanho de cada ponto dependendo do número de crianças (kids).          
+          
+fake_menor <- read_delim(file1 <- "https://raw.githubusercontent.com/leobarone/ifch_intro_r/master/data/fake_data.csv", delim = ";", col_names = T)  
+
+# As duas principais variáveis são contínuas e até onde eu sei o número de crianças é discreta
+
+ggplot(fake_menor) +
+  geom_point(aes(x = income, y = savings, size = kids, colour = kids))
+
+#Aspectos não relacionados à geometria
+# Finalmente, podemos alterar diversos aspectos não relacionados aos dados, geometria e "aesthetics". 
+# O procedimento para adicionar alterações em título, eixos, legenda, etc, é o mesmo que para adicionar novas 
+# geometrias/camadas.
+
+# Título
+  
+  ggplot(fake) + 
+  geom_point(aes(x = idade, y = renda, colour = sexo)) +
+  ggtitle("Renda por idade, separado por sexo")
+
+# A seguir, vamos modificar os nomes dos rótulos dos eixos:
+  
+  ggplot(fake) + 
+    geom_point(aes(x = idade, y = renda, colour = sexo)) +
+    ggtitle("Renda por idade, separado por sexo") +
+    xlab("Idade (em anos inteiros)") +
+    ylab("FM$ (Fake Money)")  
+
+# Para alterar o estilo do nosso gráfico, é mais fácil usar um tema ( theme ) pré-definido. 
+# Por exemplo, podemos usar theme_classic para tirar o preenchimento e a grade do fundo.
+  
+  ggplot(fake) + 
+    geom_point(aes(x = idade, y = renda, colour = sexo)) +
+    ggtitle("Renda por idade, separado por sexo") +
+    xlab("Idade (em anos inteiros)") +
+    ylab("FM$ (Fake Money)") +
+    theme_classic()  
+
+# Os temas também podem ser usados para replicar estilos de outras fontes profissionais, 
+# por exemplo usando o pacote ggthemes. Debaixo criamos um gráfico usando o estilo da revista
+# "The Economist" em uma linha só de código.
+  
+  ggplot(fake) + 
+    geom_point(aes(x = idade, y = renda, colour = sexo)) +
+    ggtitle("Renda por idade, separado por sexo") +
+    xlab("Idade (em anos inteiros)") +
+    ylab("FM$ (Fake Money)") +
+    theme_tufte()
+
+  #Amei esse ggthemes <3  
+
+# Tópicos adicionais com ggplot2 (tutorial 12)
+  # https://github.com/leobarone/FLS6397_2018/blob/master/tutorials/tutorial12.Rmd
+
+# geom_text: que coloca como formas geométricas os textos mesmos. 
+  
+  ggplot(fake) +
+    geom_text(aes(x=idade,y=renda,label=candidato))
+
+# geom_tile : tem uma forte conexão com mapas "raster" que discutiremos mais adiante no curso. 
+  # Especificamos variáveis x e y, e também uma variável de 'fill' que se aplica a cada célula de interseção de x e y.
+  
+  ggplot(fake) +
+    geom_tile(aes(x=idade,y=educ, fill=renda))  
+
+# Pipes e Gráficos de linha
+  
+# Gráficos de linha exigem, em geral, um pouco mais de preparação de nossos dados. 
+  # A variável x pode ser discreta ou contínua, mas precisa ser ordenado para que as linhas façam sentido. 
+  # Para que podemos transformar os nossos dados na mesma linha de código onde criamos o nosso gráfico, 
+  # vamos aprender primeiramente como a usar ggplot2 com o pipe:
+  
+  fake %>% ggplot() +
+    geom_point(aes(x=idade,y=renda, colour = sexo))
+
+# Só precisamos mexer o data.frame fora do ggplot2 e colocá-lo antes do pipe  
+  
+  fake %>% filter(sexo=="Female") %>%
+    ggplot() +
+    geom_point(aes(x=idade,y=renda, colour = sexo))
+  
+# Para criar um gráfico de linha vamos usar 'idade' como nossa variável ordenada e, portanto, precisamos 
+  # resumir os dados por idade. Vamos analisar a renda média por idade
+  
+  fake %>% group_by(idade) %>%
+    summarize(renda_media=mean(renda,na.rm=T))
+
+  # plot:
+  
+  fake %>% group_by(idade) %>%
+    summarize(renda_media=mean(renda,na.rm=T)) %>%
+    ggplot() +
+    geom_line(aes(x=idade, y=renda_media))
+
+# E se quisermos ter duas linhas, uma para cada sexo? 
+# Precisamos reorganizar nossos dados e incluir um parâmetro 'group' em nossa chamada para ggplot2.
+# Isso é essencial para que o ggplot2 saiba como desenhar as linhas.
+  
+  fake %>% group_by(idade,sexo) %>%
+    summarize(renda_media=mean(renda,na.rm=T)) %>%
+    ggplot() +
+    geom_line(aes(x=idade, y=renda_media, group=sexo, color = sexo))
+
+## Exercício
+
+  # Accesse o banco de dados flights no pacote nycflights13. 
+  # Transforme os dados e crie um gráfico de linha com meses no eixo horixontal, 
+  # o atraso média de partida ( dep_delay) no eixo vertical, e linhas separadas para cada aeroporto de origem. 
+  
+  # Definindo um tema para todos os gráficos daqui em diante:
+  theme_set(theme_tufte())
+  
+#Fazendo o rolê:
+  
+  library(nycflights13)
+
+voos <- flights
+  
+voos %>%
+  filter(!is.na(origin),
+         !is.na(dep_delay)) %>%
+  group_by(origin, month) %>%
+  summarise(mean_delay = mean(dep_delay)) %>%
+  mutate(month = factor(month, ordered = T, c(1:12))) %>%
+  arrange(month) %>%
+  ggplot() +
+  geom_line(aes(x = month, y = mean_delay, group= origin, colour = origin)) +
+  scale_color_gdocs()
+
+voos %>%
+  filter(!is.na(origin),
+         !is.na(dep_delay)) %>%
+  group_by(origin, month) %>%
+  summarise(mean_delay = mean(dep_delay)) %>%
+  mutate(month = factor(month, ordered = T, c(1:12)), label = if_else(month == max(month), as.character(origin), NA_character_)) %>%
+  arrange(month) %>%
+  ggplot(aes(x = month, y = mean_delay, group= origin, colour = origin)) +
+  geom_line() +
+  scale_color_gdocs() + 
+  geom_label_repel(aes(label = label),
+                   nudge_x = 1,
+                   na.rm = TRUE) 
+
+#Deixando a legenda dentro do gráfico:
+#procurar library(ggrepel)
+
+## Exercício
+# Com o banco de dados flights, filtrar os dados para voos partindo do aeroporto LGA no dia 20 de maio 
+# ('month' e 'day'). Depois, crie um gráfico de dispersão/texto que compara a hora de partida com distancia, 
+# que coloca os nomes de destinos no gráfico, e, usando um 'scale', para que o cor de cada texto reflete o 
+# atraso de partido desse voo.
+
+voos %>%
+  filter(origin == "LGA",
+         month == 5,
+         day == 20) %>%
+  ggplot() +
+  geom_text(aes(x = hour, y = distance, label=dest , colour = dep_delay, na.rm = TRUE,
+                label.size = 0.15)) + 
+  scale_color_gradient(low="grey",high="red")	+
+  ggtitle("Atraso por destino")
