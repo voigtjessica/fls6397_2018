@@ -1,0 +1,335 @@
+---
+title: "Webscraping"
+author: "Jessica Voigt"
+date: "11 de junho de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Início:
+
+* Curso completo em : [https://github.com/leobarone/cebrap_lab_raspagem_r](https://github.com/leobarone/cebrap_lab_raspagem_r)
+O pacote que vamos usar para fazer o scraping aqui é o *rvest*
+
+```{r}
+library(rvest)
+library(tidyverse)
+```
+
+O tidyverse já contém o rvest, mas eu loguei os dois para lembrar qual package era.
+
+## For loops e links com numeração de página - Site da ALESP
+
+No site, vamos pesquisar por todas as proposições relacionados à palavra "merenda".
+
+O resultado da pesquisa é dividido em diversas páginas com 10 observações em cada uma. Há 4 informações sobre as proposições: data, título (e número do projeto), autor e etapa.
+
+Podemos prosseguir, clicando nos botões de navegação ao final da página, para as demais páginas da pesquisa. Por exemplo, podemos ir para a [página 2] (https://www.al.sp.gov.br/alesp/pesquisa-proposicoes/?direction=acima&lastPage=84&currentPage=1&act=detalhe&idDocumento=&rowsPerPage=10&currentPageDetalhe=1&tpDocumento=&method=search&text=merenda&natureId=&legislativeNumber=&legislativeYear=&natureIdMainDoc=&anoDeExercicio=&legislativeNumberMainDoc=&legislativeYearMainDoc=&strInitialDate=&strFinalDate=&author=&supporter=&politicalPartyId=&tipoDocumento=&stageId=&strVotedInitialDate=&strVotedFinalDate=) clicando uma vez na seta indicando à direita.
+
+OBS: Há uma razão importante para começarmos nosso teste com a segunda página da busca. Em diversos servidores web, como este da ALESP, o link (endereço url) da primeira página é "diferente" dos demais. Em geral, os links são semelhantes da segunda página em diante.
+
+Nossa primeira tarefa consiste em capturar estas informações. 
+
+Vamos armazenar a URL em um objeto ("url_base", mas você pode dar qualquer nome que quiser). 
+
+```{r}
+url_base <- "https://www.al.sp.gov.br/alesp/pesquisa-proposicoes/?direction=acima&lastPage=84&currentPage=1&act=detalhe&idDocumento=&rowsPerPage=10&currentPageDetalhe=1&tpDocumento=&method=search&text=merenda&natureId=&legislativeNumber=&legislativeYear=&natureIdMainDoc=&anoDeExercicio=&legislativeNumberMainDoc=&legislativeYearMainDoc=&strInitialDate=&strFinalDate=&author=&supporter=&politicalPartyId=&tipoDocumento=&stageId=&strVotedInitialDate=&strVotedFinalDate="
+```
+
+Basicamente todos os campos que poderiam ter sido especificados na busca são apresentados no endereço. Como preenchemos apenas com o termo ("merenda"), esse será o único parametro definido na URL ("text=merenda").
+
+Também podemos observar que a pesquisa retornou 84 páginas ("lastPage=78") e que a página atual (2) é a de número 1 ("currentPage=1") -- a página 1 da pesquisa é numerada como 0 nesta ferramenta de busca, mas o padrão muda de página para página.
+
+Podemos ver que há muitas páginas de resultado para a palavra-chave que utilizamos. Nosso desafio é conseguir "passar" de forma eficiente por elas, ou seja, acessar os 78 links e "raspar" o seu conteúdo. Para isso, usaremos uma função essencial na programação, o "for loop".
+
+### Exercício:
+
+Tente construir um exemplo de loop que imprima na tela os números de 3 a 15 multiplicados por 10:
+
+```{r}
+for (i in 3:15){
+  print(i * 10)
+}
+```
+
+### Gsub
+
+Podemos agora fazer "passar" pelas páginas que contêm a informação que nos interessa. Temos que escrever uma pequena instrução que indique ao programa que queremos passar pelas páginas de 1 a 84, substituindo apenas o número da página atual -- "currentPage" -- no endereço URL que guardamos no objeto url_base. Vamos usar o *gsub* para isso:
+
+```{r}
+o_que_procuro <- "palavra"
+substituir_por <- "batata"
+meu_texto <- "quero substituir essa palavra"
+
+gsub(o_que_procuro, substituir_por, meu_texto)
+```
+
+ou
+
+```{r}
+meu_texto_2 <- "o rato roeu a roupa do rei de roma"
+
+gsub("r", "g", meu_texto_2)
+```
+
+Podemos mudar o número da página do nosso endereço de pesquisa.
+
+Descobrimos que na URL, o que varia ao clicar na próxima página é o "currentPage=1" que vai para "currentPage=2". Nesse caso é o "1" como segunda página e o "2" como terceira e assim por diante. 
+
+*Note que as páginas têm peculiaridades e, por isso, é importante conhecer a página que queremos "raspar". Captura de informações em páginas de internet, por esta razão, tem sempre um caráter "artesanal".*
+
+Vamos substituir na URL da página 2 da nossa busca o número por algo que "guarde o lugar" do número de página. Esse algo é um "placeholder" e pode ser qualquer texto. No caso, usaremos "NUMPAG". Veja abaixo onde "NUMPAG" foi introduzido no endereço URL. Depois eu vou substituir o NUMPAG com o gsub
+
+*Obs: Lembremos que ao colocar na URL, não devemos usar as aspas. Ainda assim devemos usar aspas ao escrever "NUMPAG" como argumento de uma função, pois queremos dizer que procuramos a palavra "NUMPAG" e não o objeto chamado NUMPAG.*
+
+```{r}
+url_base <- "https://www.al.sp.gov.br/alesp/pesquisa-proposicoes/?direction=acima&lastPage=84&currentPage=NUMPAG&act=detalhe&idDocumento=&rowsPerPage=10&currentPageDetalhe=1&tpDocumento=&method=search&text=merenda&natureId=&legislativeNumber=&legislativeYear=&natureIdMainDoc=&anoDeExercicio=&legislativeNumberMainDoc=&legislativeYearMainDoc=&strInitialDate=&strFinalDate=&author=&supporter=&politicalPartyId=&tipoDocumento=&stageId=&strVotedInitialDate=&strVotedFinalDate="
+
+i = "6"
+url <- gsub("NUMPAG", i, url_base)
+
+print(url)
+```
+
+Agora que temos o código substituindo funcionando, vamos implementar o loop para que as URLs das páginas sejam geradas automaticamente. Por exemplo, se quisermos "imprimir" na tela as páginas 0 a 5, podemos usar o seguinte código:
+
+```{r}
+
+for(i in 0:5){
+  url <- gsub("NUMPAG", i, url_base)
+  print(url)
+}
+```
+
+### Capturando o conteúdo de uma página com rvest
+
+Muito mais simples do que parece, não? Mas veja bem, até agora tudo que fizemos foi produzir um texto que, propositalmente, é igual ao endereço das páginas cujo conteúdo nos interessa. Porém, ainda não acessamos o seu conteúdo. Precisamos, agora, de funções que façam algo semelhante a um navegador de internet, ou seja, que se comuniquem com o servidor da página e receba o seu conteúdo.
+
+Para capturar uma página, ou melhor, o código HTML no qual a página está escrita, utilizamos a função **read_html, do pacote rvest**. Vamos usar um exemplo com wikipedia:
+
+```{r}
+url <- "https://en.wikipedia.org/wiki/The_Circle_(Eggers_novel)"
+pagina <- read_html(url)
+print(pagina)
+```
+
+O **read_html** copia o código fonte e cola em uma lista.
+O resultado é um documento "xml_document" que contém o código html que podemos inspecionar usando o navegador. Vamos entender nos próximos tutoriais o que é um documento XML, por que páginas em HTML são documentos XML e como navegar por eles. Por enquanto, basta saber que ao utilizarmos read_html, capturamos o conteúdo de uma página e o armezenamos em um objeto bastante específico.
+
+### Função read_table
+
+```{r}
+i <- 1
+url <- gsub("NUMPAG", i, url_base)
+
+pagina <- read_html(url)
+
+lista_tabelas <- html_table(pagina, header = TRUE)
+
+print(lista_tabelas)
+```
+
+Geramos um endereço de URL e, com o endereço em mãos, capturamos o conteúdo da página usando o link como argumento da função read_html para, a seguir, extraírmos uma lista das tabelas da página. Antes de avançar, vamos falar um pouco sobre listas no R (pois o resultado da função html_table é uma lista).
+
+Note que a função html_table tem um segundo argumento, "header = TRUE". Esse argumento serve para indicarmos ao nosso "extrator de tabelas HTML" que a primeira linha da tabela deve ser considerada cabeçalho e, portanto, servirá de nome às colunas da tabela.
+
+### Listas
+
+Um detalhe fundamental do resultado da função html_table é que o resultado dela é uma lista. Por que uma lista? Porque pode haver mais de uma tabela na página e cada tabela ocupará uma posição na lista. Para o R, uma lista pode combinar objetos de diversas classes: vetores, data frames, matrizes, etc.
+
+Ao rasparmos o site da ALESP, a função html_table retorna várias tabelas e não apenas a dos resultados das proposições, que é o que queremos.
+
+Como acessar objetos em uma lista? Podemos ulitizar colchetes. Porém, se utilizarmos apenas um colchete, estamos obtendo uma sublista. Por exemplo, vamos criar diferentes objetos e combiná-los em uma lista:
+
+```{r}
+# Objetos variados
+matriz <- matrix(c(1:6), nrow=2)
+vetor.inteiros <- c(42:1)
+vetor.texto <- c("a", "b", "c", "d", "e")
+vetor.logico <- c(T, F, T, T, T, T, T, T, F)
+texto <- "meu texto aleatorio"
+resposta <- 42
+
+# Lista
+minha.lista <- list(matriz, vetor.inteiros, vetor.texto, vetor.logico, texto, resposta)
+print(minha.lista)
+```
+
+Para produzirmos uma sublista, usamos um colchete (mesmo que a lista só tenha um elemento!):
+
+```{r}
+print(minha.lista[1:3])
+class(minha.lista[1:3])
+print(minha.lista[4])
+class(minha.lista[4])
+```
+
+Se quisermos usar o objeto de uma lista, ou seja, extraí-lo da lista, devemos usar dois colchetes:
+
+```{r}
+print(minha.lista[[4]])
+class(minha.lista[[4]])
+```
+
+Ao obtermos uma lista de tabelas de uma página (nem sempre vai parecer que todos os elementos são tabelas, mas são, pelo menos para um computador que "lê" HTML), devemos utilizar dois colchetes para extrair a tabela que queremos. Exemplo (no nosso caso já sabemos que a tabela que queremos ocupa a posição 1 da lista, mas é necessário examinar sempre):
+
+```{r}
+i <- 1
+url <- gsub("NUMPAG", i, url_base)
+pagina <- read_html(url)
+lista_tabelas <- html_table(pagina, header = TRUE)
+
+tabela <- lista_tabelas[[1]]
+
+class(tabela)
+View(tabela)
+```
+
+
+### Captura das tabelas
+
+Vamos tentar capturar as cinco primeiras páginas do resultado da pesquisa de proposições por meio da palavra-chave "merenda". Para podermos saber que estamos capturando, vamos usar a função "head", que retorna as 6 primeiras linhas de um data frame, e a função "print".
+
+Avance devagar neste ponto. Leia o código abaixo com calma e veja se entendeu o que acontece em cada linha. Já temos um primeiro script de captura de dados quase pronto e é importante estarmos seguros para avançar.
+
+```{r, EVAL = F}
+url_base <- "https://www.al.sp.gov.br/alesp/pesquisa-proposicoes/?direction=acima&lastPage=84&currentPage=NUMPAG&act=detalhe&idDocumento=&rowsPerPage=10&currentPageDetalhe=1&tpDocumento=&method=search&text=merenda&natureId=&legislativeNumber=&legislativeYear=&natureIdMainDoc=&anoDeExercicio=&legislativeNumberMainDoc=&legislativeYearMainDoc=&strInitialDate=&strFinalDate=&author=&supporter=&politicalPartyId=&tipoDocumento=&stageId=&strVotedInitialDate=&strVotedFinalDate="
+
+for (i in 0:4) {
+  
+  url <- gsub("NUMPAG", i, url_base)
+  
+  pagina <- read_html(url)
+  
+  lista_tabelas <- html_table(pagina, header = TRUE)
+  
+  tabela <- lista_tabelas[[1]]
+  
+  print(head(tabela))
+}
+```
+
+Vamos traduzir o que estamos fazendo: 
+* Para cada i de 0 a 4, 
+* Vamos criar um link que é a combinação da URL base ('url_base') com i, 
+* Vamos usar esta combinação ('url') como argumento da função read_html para capturar a página (e criar o objeto 'página'), 
+* Vamos extrair a lista de tabelas da página com html_table (e criar a 'lista_tabelas'), 
+* Vamos escolher a primeira tabela da lista (e criar 'tabela') e imprimir as 6 primeiras linhas da tabela de cada página".
+
+### Captura das tabelas com armazenamento em data frames
+
+Podemos agora criar um data frame vazio ("dados") e preenchê-lo com os dados capturados em cada iteração. O resultado final será um objeto com todas as tabelas de todas as páginas capturadas, que é o nosso objetivo central.
+
+Novamente vamos trabalhar apenas com as cinco primeiras páginas, mas bastaria alterar um único número para que o processo funcionasse para todas as páginas de resultados - desde que sua conexão de internet e a memória RAM do seu computador sejam boas!
+
+Obs: vamos inserir um "contador" das páginas capturadas com "print(i)". Isso será muito útil quando quisermos capturar um número grande de páginas, pois o contador nos dirá em qual iteração (sic, é sem "n" mesmo) do loop estamos.
+
+```{r, EVAL = F}
+url_base <- "https://www.al.sp.gov.br/alesp/pesquisa-proposicoes/?direction=acima&lastPage=84&currentPage=NUMPAG&act=detalhe&idDocumento=&rowsPerPage=10&currentPageDetalhe=1&tpDocumento=&method=search&text=merenda&natureId=&legislativeNumber=&legislativeYear=&natureIdMainDoc=&anoDeExercicio=&legislativeNumberMainDoc=&legislativeYearMainDoc=&strInitialDate=&strFinalDate=&author=&supporter=&politicalPartyId=&tipoDocumento=&stageId=&strVotedInitialDate=&strVotedFinalDate="
+
+dados <- data.frame()
+
+for (i in 0:4) {
+
+  print(i)
+  
+  url <- gsub("NUMPAG", i, url_base)
+  
+  pagina <- read_html(url)
+  
+  lista_tabelas <- html_table(pagina, header = TRUE)
+  
+  tabela <- lista_tabelas[[1]]
+  
+  dados <- bind_rows(dados, tabela)
+}
+
+# Estrutura do data frame
+str(dados)
+
+# 6 primeiras observações
+head(dados)
+
+# 6 últimas observações
+tail(dados)
+```
+
+### Exercício:
+
+Remover a tabela da lista de municípios da wikipédia (1 página):
+
+```{r, EVAL = F}
+wikipedia <- "https://pt.wikipedia.org/wiki/Lista_de_munic%C3%ADpios_do_Brasil_por_popula%C3%A7%C3%A3o"
+
+pagina_w <- read_html(wikipedia)
+lista_tabelas_w <- html_table(pagina_w, header = TRUE)
+dados_munics <- lista_tabelas_w[[1]]
+
+```
+
+<3 
+
+## Dados fora de uma tabela:
+
+Na primeira atividade não precisamos lidar com o conteúdo e a estrutura da página que estávamos capturando. Como o conteúdo que nos interessava estava em uma tabela, e o pacote rvest contém uma função específica para extração de tabelas, gastamos poucas linhas de código para ter a informação capturada já organizada em um data frame.
+
+O que fazer, entretanto, com páginas que não têm tabelas? Como obter apenas as informações que nos interessam quando o conteúdo está "espalhado" pela página? Utilizaremos, como veremos abaixo, a estrutura do código HTML da própria página para selecionar apenas o que desejamos e construir data frames.
+
+Nosso objetivo nessa atividade será capturar uma única página usando a estrutura do código HTML da página. Já sabemos que, uma vez resolvida a captura de uma página, podemos usar "loop" para capturar quantas quisermos, desde que tenha uma estrutura semelhante.
+
+Antes disso, porém, precisamos falar um pouco sobre XML e HTML.
+
+### XML e HTML
+
+XML significa "Extensive Markup Language". Ou seja, é uma linguagem -- e, portanto, tem sintaxe -- e é uma linguagem com marcação. Marcação, neste caso, significa que todo o conteúdo de um documento XML está dentro de "marcas", também conhecidas como "tags". É uma linguagem extremamente útil para transporte de dados -- por exemplo, a Câmara dos Deputados utiliza XML em seu Web Service para disponibilizar dados abertos (mas você não precisa saber disso se quiser usar o pacote de R bRasilLegis que nós desenvolvemos ;) -- disponível aqui: https://github.com/leobarone/bRasilLegis.
+
+Por exemplo, se quisermos organizar a informação sobre um indivíduo que assumiu diversos postos públicos, poderíamos organizar a informação da seguinte maneira:
+
+```{r}
+<politicos>
+  <politico>
+    <id> 33333 </id>
+    <nome> Fulano Deputado da Silva </nome>
+    <data_nascimento> 3/3/66 </data_nascimento>
+    <sexo> Masculino </sexo>
+    <cargos>
+      <cargo> 
+        <cargo> prefeito </cargo> 
+        <partido> PAN </partido>
+        <ano_ini> 2005 </ano_ini>
+        <ano_fim> 2008 </ano_fim>
+      </cargo>
+      <cargo> 
+        <cargo> deputado federal </cargo> 
+        <partido> PAN </partido>
+        <ano_ini> 2003 </ano_ini>
+        <ano_fim> 2004 </ano_fim>
+       </cargo>
+       <cargo> 
+        <cargo> deputado estadual </cargo> 
+        <partido> PAN </partido>
+        <ano_ini> 1998 </ano_ini>
+        <ano_fim> 2002 </ano_fim>
+       </cargo>
+      </cargos>
+  </politicos>
+</politicos>
+```
+
+Exercício (difícil): se tivessemos que representar estes dados em um banco de dados (data frame), como seria? Quantas linhas teria? Quantas colunas teria?
+* Um df[3,8]. Colunas : id , nome, data_nascimento, sexo, cargo, partido, ano_ini, ano_fim
+
+Veja no link abaixo um exemplo de arquivo XML proveniente do Web Service da Câmara dos Deputados:
+
+[http://www.camara.gov.br/SitCamaraWS/Deputados.asmx/ObterDetalhesDeputado?ideCadastro=141428&numLegislatura=](http://www.camara.gov.br/SitCamaraWS/Deputados.asmx/ObterDetalhesDeputado?ideCadastro=141428&numLegislatura=)
+
+Abra agora a página inicial da Folha de São Paulo. Posicione o mouse em qualquer elemento da página e, com o botão direito, selecione "Inspecionar" (varia de navegador para navegador, mas recomendo utilizar o Chrome para esta tarefa a despeito da superioridade do Firefox, rs). Você verá o código HTML da página.
+
+Sem precisar observar muito, é fácil identificar que o código HTML da ALESP se assemelha ao nosso breve exemplo de arquivo XML. Não por acaso: HTML é um tipo de XML. Em outra palavras, toda página de internet está em um formato de dados conhecido e, como veremos a seguir, pode ser re-organizado facilmente.
+
+Terminar o restante dos [exercícios dos outros tutoriais] (https://github.com/leobarone/FLS6397_2018/blob/master/classes/class09.md)
+
+
